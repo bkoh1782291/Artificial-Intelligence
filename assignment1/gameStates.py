@@ -69,7 +69,7 @@ def minimax(b, depth, isMax):
     if (score == 1): 
         return score
     # # #x + " " + str(best) + '\n')player2 wins
-    if (score == -1):
+    if (score == -1) :
         return score
     # tie
     if (CheckBoard(b) == False):
