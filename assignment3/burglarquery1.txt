@@ -1,0 +1,1 @@
+P(Burglar | Alarm=true)
