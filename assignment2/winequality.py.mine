@@ -1,0 +1,252 @@
+"""
+Brian Koh Lit Yang
+a1782291
+Artificial Intelligence Assignment 2
+Wine Quality Prediction using Decision Tree Learning (DTL)
+Usage
+winequality.py [train] [test] [minleaf]
+"""
+
+from __future__ import division
+from collections import Counter
+import sys
+import math
+
+
+""" initialize Node constructor class """
+class Node:
+    def __init__(self, leaf = False):
+        self.leaf = leaf
+        self.left = None
+        self.right = None
+        self.splitval = None
+        self.label = None
+        self.data = None
+
+    def __del__(self):
+        class_name = self.__class__.__name__
+
+
+""" function to calculate the remainder value which for calculating the information gain """
+def calculate_remainder(l_sub, r_sub, Totalsize):
+    left_I = I_value(l_sub)
+    right_I = I_value(r_sub)
+    remainder = len(l_sub)/Totalsize*left_I + len(r_sub)/Totalsize*right_I
+
+    return remainder
+
+
+""" function to calculate information 'gain value' of set Node """
+def gain_value(train_dataset, l_sub, r_sub):
+
+    Gain = 0
+    Totalsize = len(train_dataset)
+    Root_I = I_value(train_dataset)
+    remainder = calculate_remainder(l_sub,r_sub,Totalsize)
+
+    if(len(l_sub) == 0 or len(r_sub)== 0):
+        Gain = 0
+    else:
+        Gain = Root_I - remainder
+
+    return Gain
+
+""" function to do splitting for wine quality dataset """
+def attributes_split(train_dataset, attr, splitval):
+
+    right = []
+    left = []
+
+    for i in train_dataset:
+        x = i[0]
+        if  attr == None:
+            continue
+        if x[attr] <= splitval:
+            left.append(i)
+        else:
+            right.append(i)
+
+    return left, right
+
+
+""" function to find I_value / Information value """
+def I_value(data_set):
+
+    I  = 0.0
+    length = len(data_set)
+    attr_dic = label_count(data_set)
+
+    for frequency in attr_dic.values():
+        prob = (frequency/length)
+        if prob == 0:
+            I = 0.0
+        else:
+            I += -(prob * math.log(prob,2))
+
+    return I
+
+
+"""
+    function to build a decision tree
+    'trains' the dataset based on the given values of the dataset
+"""
+def DTL(train_dataset, minleaf):
+
+    sample_size = len(train_dataset)
+
+    # find frequency of different label by using built funciton label_count(sample)
+    label_counting = label_count(train_dataset)
+    num_sample = len(label_counting)
+
+    x = [tuple(at[0]) for at in train_dataset]
+    x = set(x)
+    num_x = len(x)
+
+    if(sample_size <= minleaf or num_sample == 1 or num_x == 1):
+        new_leaf_node = Node(leaf = True)
+
+        # find the most significant attribute
+        most_frequent = 0
+        for counted_label, frequence in label_counting.items():
+            if frequence > most_frequent:
+                most_frequent = frequence
+                new_leaf_node.label = counted_label
+            elif frequence == most_frequent:
+                new_leaf_node.label = "unknown"
+
+        return new_leaf_node
+
+    # algorithm2 to find the best attribute and best splitval value
+    [attr, splitval] = ChooseSplit(train_dataset)
+    sub_L, sub_R = attributes_split(train_dataset,attr,splitval)
+
+    # Create new node n
+    new_node = Node()
+    new_node.attr = attr
+    new_node.splitval = splitval
+    new_node.left = DTL(sub_L, minleaf)
+    new_node.right = DTL(sub_R, minleaf)
+
+    return new_node
+
+
+def ChooseSplit(train_dataset):
+
+    attr = None
+    splitval_best = None
+    attribute_size = len(train_dataset[0][0])
+
+    biggest_gain = 0
+    for i in range(attribute_size):
+
+        # we need to compare the gain of each attribute and find the biggest.
+        # sort by the each attribute, and calculate each gain seperatly
+        train_dataset.sort(key=lambda srt: srt[0][i])
+
+        for row in range(len(train_dataset)-1):
+            splitval = 0.5 * (train_dataset[row][0][i] + train_dataset[row + 1][0][i])
+            l_sub, r_sub = attributes_split(train_dataset,i,splitval)
+
+            gain  = gain_value(train_dataset,l_sub,r_sub)
+            if gain > biggest_gain:
+                biggest_gain = gain
+                attr = i
+                splitval_best = splitval
+
+    return (attr,splitval_best)
+
+
+def label_count(train_dataset):
+
+    label = []
+
+    for sample in train_dataset:
+        label.append(sample[1])
+
+    label_dictionary = Counter(label)
+    return label_dictionary
+
+
+# function to return the leaf out the label
+def decision_tree_prediction(n, data):
+
+    while not n.leaf:
+
+        if data[n.attr] <= n.splitval:
+            n = n.left
+        else:
+            n = n.right
+
+    return n.label
+
+
+# function to convert dataset to lists
+def dataset(data):
+
+    # read in training and testing data set
+    train_dataset = []
+
+    # Read the training set and convert string data to list
+    data.readline()
+
+    # read through dataset line by line
+    for sample in data.readlines():
+        attributes = []
+        # append each attribute to a list
+        # remove white space and split each value
+        for col in sample.strip().split():
+            attributes.append(float(col))
+
+        label = attributes[-1]
+        attributes.pop()
+        train_dataset.append((attributes,label))
+
+    return train_dataset
+
+
+# function to convert sample test dataset to list
+def sample_test(data):
+
+    # read in training and testing data set
+    test_dataset = []
+
+    # Read the training set and convert string data to list
+    test_sample.readline()
+
+     # read through dataset line by line
+    for sample in test_sample.readlines():
+        attributes = []
+
+        # append each attribute to a list
+        # remove white space and split each value
+        for col in sample.strip().split():
+            attributes.append(float(col))
+
+        test_dataset.append(attributes)
+
+    return test_dataset
+
+
+# main function
+if __name__ == "__main__":
+
+    if (len(sys.argv) < 4 ):
+        print "Please provide arguments [dataset] [sample] [minleaf value]"
+    else:
+        train = open(sys.argv[1])
+        test_sample = open(sys.argv[2])
+        minleaf = int(sys.argv[3])
+
+    train_dataset = []
+    test_dataset = []
+
+    # call functions to convert data set to list
+    train_dataset = dataset(train)
+    test_dataset = sample_test(test_sample)
+
+    # call decision tree function to constrct a decision tree model
+    decision_tree = DTL(train_dataset, minleaf)
+
+    # predict the given test sample
+    for sample in test_dataset:
+        print(int(decision_tree_prediction(decision_tree, test_dataset)))
